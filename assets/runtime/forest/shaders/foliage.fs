@@ -8,8 +8,9 @@ varying vec4 tint;
 varying vec4 shadowPosNear;
 varying vec4 shadowPosFar;
 uniform sampler2D texture0;
-uniform sampler2D shadowMapNear;
-uniform sampler2D shadowMapFar;
+// Packed 24-bit-ish depth needs highp texture reads on GLES2.
+uniform highp sampler2D shadowMapNear;
+uniform highp sampler2D shadowMapFar;
 uniform vec3 cameraPos;
 uniform vec3 sunDir;
 uniform vec3 fogColor;
