@@ -12,7 +12,7 @@ android {
         versionName '0.1.0'
         ndk { abiFilters 'arm64-v8a' }
     }
-    sourceSets { main.assets.srcDirs += ['../../.generated/assets'] }
+    sourceSets { main.assets.srcDirs += ['../../.generated/assets','../../assets/runtime'] }
     signingConfigs {
         release {
             if (signing.KEYSTORE_PATH) storeFile file(signing.KEYSTORE_PATH)
@@ -34,13 +34,16 @@ android {
 }
 tasks.register('verifySceneAssets') {
     doLast {
-        def names = ['canopy.png']
+        def names = ['canopy.png', 'environment.png']
         ['ground','stone','bark'].each { surface ->
             ['albedo','normal','arm'].each { map -> names.add("${surface}_${map}.png") }
         }
         names.each { name ->
             def source = file("../../.generated/assets/forest/${name}")
             if (!source.isFile() || source.length() == 0) throw new GradleException("Missing scene texture: ${name}")
+        }
+        ['forest.vs','surface.fs','foliage.fs','shadow.vs','shadow.fs','sky.vs','sky.fs'].each { name ->
+            if (!file("../../assets/runtime/forest/shaders/${name}").isFile()) throw new GradleException("Missing shader: ${name}")
         }
     }
 }
