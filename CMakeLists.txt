@@ -20,4 +20,9 @@ add_library(main SHARED src/main.cpp src/Geometry.cpp)
 target_include_directories(main PRIVATE src)
 target_compile_options(main PRIVATE -Wall -Wextra -Wpedantic -fexceptions)
 target_link_libraries(main PRIVATE raylib android log EGL GLESv2 OpenSLES)
-target_link_options(main PRIVATE "-Wl,--gc-sections" "-Wl,-u,ANativeActivity_onCreate")
+# NDK 27 defaults to 4 KiB ELF pages. Explicit 16 KiB alignment is
+# required for native APK installation on devices with 16 KiB pages.
+target_link_options(main PRIVATE "-Wl,--gc-sections"
+    "-Wl,-u,ANativeActivity_onCreate"
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384")
