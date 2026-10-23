@@ -5,30 +5,45 @@ varying vec3 worldPos;
 varying vec3 normal;
 varying vec4 tangent;
 varying vec4 tint;
-varying vec4 shadowPos;
+varying vec4 shadowPosNear;
+varying vec4 shadowPosFar;
 uniform sampler2D texture0;
 uniform sampler2D normalMap;
 uniform sampler2D armMap;
-uniform sampler2D shadowMap;
+uniform sampler2D shadowMapNear;
+uniform sampler2D shadowMapFar;
 uniform vec3 cameraPos;
 uniform vec3 sunDir;
 uniform vec3 fogColor;
 uniform float shadowTexel;
 float decodeDepth(vec4 rgba) {
-    return dot(rgba, vec4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0));
+    return dot(rgba,vec4(1.0,1.0/255.0,1.0/65025.0,1.0/16581375.0));
+}
+float sampleCascade(sampler2D depthTex,vec3 projected,float bias) {
+    float sum=0.0;
+    for(int x=0;x<2;x++)for(int y=0;y<2;y++) {
+        vec2 offset=(vec2(float(x),float(y))-vec2(0.5))*shadowTexel;
+        vec2 coord=clamp(projected.xy+offset,
+                         vec2(shadowTexel),vec2(1.0-shadowTexel));
+        float depth=decodeDepth(texture2D(depthTex,coord));
+        sum+=step(projected.z-bias,depth);
+    }
+    return sum*0.25;
 }
 float shadowVisibility(vec3 n) {
-    vec3 projected = shadowPos.xyz/shadowPos.w*0.5+0.5;
-    if (projected.x<0.0 || projected.x>1.0 || projected.y<0.0 || projected.y>1.0 ||
-        projected.z<=0.0 || projected.z>=1.0) return 1.0;
-    float bias = max(0.00045, 0.0028 * (1.0-dot(n,sunDir)));
-    float sum = 0.0;
-    for (int x=-1;x<=1;x++) for (int y=-1;y<=1;y++) {
-        vec2 coord = projected.xy + vec2(float(x),float(y))*shadowTexel;
-        float depth = decodeDepth(texture2D(shadowMap,coord));
-        sum += (projected.z-bias < depth) ? 1.0 : 0.0;
-    }
-    return sum/9.0;
+    vec3 nearP=shadowPosNear.xyz/shadowPosNear.w*0.5+0.5;
+    vec3 farP=shadowPosFar.xyz/shadowPosFar.w*0.5+0.5;
+    float bias=max(0.00012,0.0008*(1.0-abs(dot(n,sunDir))));
+    float farShadow=1.0;
+    if(farP.x>0.0&&farP.x<1.0&&farP.y>0.0&&farP.y<1.0&&
+       farP.z>0.0&&farP.z<1.0)
+        farShadow=sampleCascade(shadowMapFar,farP,bias);
+    if(nearP.z<=0.0||nearP.z>=1.0)return farShadow;
+    float edge=min(min(nearP.x,1.0-nearP.x),min(nearP.y,1.0-nearP.y));
+    if(edge<=0.0)return farShadow;
+    float nearShadow=sampleCascade(shadowMapNear,nearP,bias);
+    // Prevent a hard line between near and far shadow resolutions.
+    return mix(farShadow,nearShadow,smoothstep(0.015,0.065,edge));
 }
 void main() {
     vec3 n=normalize(normal), t=normalize(tangent.xyz - n*dot(n,tangent.xyz));

@@ -14,7 +14,12 @@
 #include <vector>
 
 namespace {
+// Stable static light-space cascades: near covers the fine grass and ruins,
+// far preserves tree shadows beyond the clearing.
 constexpr int SHADOW_SIZE=2048;
+constexpr float NEAR_SHADOW_METRES=26.0f;
+constexpr float FAR_SHADOW_METRES=90.0f;
+constexpr Vector3 SUN_DIR{0.32f,0.82f,0.47f};
 constexpr float kPi=3.14159265358979323846f;
 constexpr int MATERIALS=5;
 
@@ -64,8 +69,11 @@ public:
         // shared with the Material copy; use the original pointers, not copies.
         for(Shader *s:{&lit_,&leaf_}) {
             s->locs[SHADER_LOC_MAP_ALBEDO]=uniform(*s,"texture0");
-            s->locs[SHADER_LOC_MAP_OCCLUSION]=uniform(*s,"shadowMap");
-            uniform(*s,"lightVP");
+            s->locs[SHADER_LOC_MAP_OCCLUSION]=uniform(*s,"shadowMapNear");
+            // raylib binds map texture units using MATERIAL_MAP_* indices.
+            s->locs[SHADER_LOC_MAP_METALNESS]=uniform(*s,"shadowMapFar");
+            uniform(*s,"lightVPNear");
+            uniform(*s,"lightVPFar");
             uniform(*s,"cameraPos");
             uniform(*s,"uWind");
             uniform(*s,"sunDir");
@@ -83,9 +91,12 @@ public:
             textures_[i]=loadTexture(names[i]);
         }
         panorama_=loadTexture("environment.png");
-        shadow_=LoadRenderTexture(SHADOW_SIZE,SHADOW_SIZE);
-        if(!IsRenderTextureValid(shadow_))throw std::runtime_error("Shadow render target unavailable");
-        SetTextureFilter(shadow_.texture,TEXTURE_FILTER_POINT);
+        for(auto &shadow:shadows_) {
+            shadow=LoadRenderTexture(SHADOW_SIZE,SHADOW_SIZE);
+            if(!IsRenderTextureValid(shadow))throw std::runtime_error("Shadow render target unavailable");
+            SetTextureFilter(shadow.texture,TEXTURE_FILTER_POINT);
+            SetTextureWrap(shadow.texture,TEXTURE_WRAP_CLAMP);
+        }
 
         for(int i=0;i<MATERIALS;++i) {
             materials_[i]=LoadMaterialDefault();
@@ -97,7 +108,8 @@ public:
             } else if(i==4) {
                 materials_[i].maps[MATERIAL_MAP_ALBEDO].texture=textures_[9];
             }
-            materials_[i].maps[MATERIAL_MAP_OCCLUSION].texture=shadow_.texture;
+            materials_[i].maps[MATERIAL_MAP_OCCLUSION].texture=shadows_[0].texture;
+            materials_[i].maps[MATERIAL_MAP_METALNESS].texture=shadows_[1].texture;
         }
 
         shadowMaterial_=LoadMaterialDefault();
@@ -105,13 +117,21 @@ public:
         shadowCanopyMaterial_=LoadMaterialDefault();
         shadowCanopyMaterial_.shader=depth_;
         shadowCanopyMaterial_.maps[MATERIAL_MAP_ALBEDO].texture=textures_[9];
-        lightCamera_={{15.36f,40.96f,20.5f},{0,1.6f,-3},{0,1,0},76.f,CAMERA_ORTHOGRAPHIC};
-        const Matrix view=MatrixLookAt(lightCamera_.position,lightCamera_.target,{0,1,0});
-        const Matrix proj=MatrixOrtho(-38,38,-38,38,0.1,120.0);
-        const Matrix lightVP=MatrixMultiply(view,proj);
+        const Vector3 center{0,1.6f,-3};
+        const Vector3 sun=Vector3Normalize(SUN_DIR);
+        const Vector3 lightPos=Vector3Add(center,Vector3Scale(sun,53.f));
+        const float extents[2]={NEAR_SHADOW_METRES,FAR_SHADOW_METRES};
+        Matrix vp[2]{};
+        for(int i=0;i<2;++i) {
+            lightCameras_[i]={lightPos,center,{0,1,0},extents[i],CAMERA_ORTHOGRAPHIC};
+            const Matrix view=MatrixLookAt(lightPos,center,{0,1,0});
+            const float r=extents[i]*.5f;
+            vp[i]=MatrixMultiply(view,MatrixOrtho(-r,r,-r,r,0.1,120.0));
+        }
         for(Shader s:{lit_,leaf_}) {
-            SetShaderValueMatrix(s,uniform(s,"lightVP"),lightVP);
-            vector3(s,"sunDir",{0.32f,0.82f,0.47f});
+            SetShaderValueMatrix(s,uniform(s,"lightVPNear"),vp[0]);
+            SetShaderValueMatrix(s,uniform(s,"lightVPFar"),vp[1]);
+            vector3(s,"sunDir",sun);
             vector3(s,"fogColor",{0.36f,0.43f,0.44f});
             scalar(s,"shadowTexel",1.0f/SHADOW_SIZE);
         }
@@ -159,7 +179,7 @@ public:
         for(auto &m:materials_)MemFree(m.maps);
         MemFree(shadowMaterial_.maps);
         MemFree(shadowCanopyMaterial_.maps);
-        UnloadRenderTexture(shadow_);
+        for(auto &shadow:shadows_)UnloadRenderTexture(shadow);
         for(auto &t:textures_)UnloadTexture(t);
         UnloadTexture(panorama_);
         UnloadShader(sky_);UnloadShader(depth_);UnloadShader(leaf_);UnloadShader(lit_);
@@ -167,22 +187,26 @@ public:
     void draw(Camera3D camera,float seconds) {
         rlSetClipPlanes(0.1,120.0);
         BeginDrawing();
-        BeginTextureMode(shadow_);
-        ClearBackground(WHITE);
-        BeginMode3D(lightCamera_);
-        rlDisableBackfaceCulling();
-        for(const auto &p:pieces_) {
-            if(p.surface==forest::Surface::Ground)continue;
-            float wind=p.surface==forest::Surface::Canopy?1.f:p.surface==forest::Surface::Leaves?.3f:0.f;
-            scalar(depth_,"uTime",seconds);
-            scalar(depth_,"uWind",wind);
-            scalar(depth_,"uMasked",p.surface==forest::Surface::Canopy?1.f:0.f);
-            const ::Material &m=p.surface==forest::Surface::Canopy?shadowCanopyMaterial_:shadowMaterial_;
-            DrawMesh(p.mesh,m,MatrixIdentity());
+        // Static foliage casters eliminate temporal shimmer caused by
+        // grass blades smaller than a single shadow texel.
+        scalar(depth_,"uTime",seconds);
+        scalar(depth_,"uWind",0.0f);
+        for(int cascade=0;cascade<2;++cascade) {
+            BeginTextureMode(shadows_[cascade]);
+            ClearBackground(WHITE);
+            BeginMode3D(lightCameras_[cascade]);
+            rlDisableBackfaceCulling();
+            for(const auto &p:pieces_) {
+                if(p.surface==forest::Surface::Ground)continue;
+                scalar(depth_,"uMasked",p.surface==forest::Surface::Canopy?1.f:0.f);
+                const ::Material &m=p.surface==forest::Surface::Canopy
+                    ?shadowCanopyMaterial_:shadowMaterial_;
+                DrawMesh(p.mesh,m,MatrixIdentity());
+            }
+            rlEnableBackfaceCulling();
+            EndMode3D();
+            EndTextureMode();
         }
-        rlEnableBackfaceCulling();
-        EndMode3D();
-        EndTextureMode();
 
         ClearBackground({63,76,75,255});
         drawSky(camera);
@@ -195,7 +219,7 @@ public:
             const bool canopy=p.surface==forest::Surface::Canopy;
             const bool leaves=p.surface==forest::Surface::Leaves;
             const Shader s=(canopy||leaves)?leaf_:lit_;
-            scalar(s,"uWind",canopy?1.f:leaves?.3f:0.f);
+            scalar(s,"uWind",canopy?.25f:leaves?.15f:0.f);
             if(canopy||leaves)scalar(s,"uCanopy",canopy?1.f:0.f);
             if(canopy||leaves)rlDisableBackfaceCulling();
             else rlEnableBackfaceCulling();
@@ -226,10 +250,10 @@ private:
     Shader lit_{},leaf_{},depth_{},sky_{};
     std::array<Texture2D,10> textures_{};
     Texture2D panorama_{};
-    RenderTexture2D shadow_{};
+    std::array<RenderTexture2D,2> shadows_{};
     std::array<::Material,MATERIALS> materials_{};
     ::Material shadowMaterial_{},shadowCanopyMaterial_{};
-    Camera3D lightCamera_{};
+    std::array<Camera3D,2> lightCameras_{};
     std::vector<Piece> pieces_;
 };
 struct Orbit {

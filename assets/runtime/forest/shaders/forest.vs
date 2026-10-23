@@ -7,7 +7,8 @@ attribute vec4 vertexTangent;
 attribute vec4 vertexColor;
 uniform mat4 mvp;
 uniform mat4 matModel;
-uniform mat4 lightVP;
+uniform mat4 lightVPNear;
+uniform mat4 lightVPFar;
 uniform float uTime;
 uniform float uWind;
 varying vec2 uv;
@@ -15,7 +16,8 @@ varying vec3 worldPos;
 varying vec3 normal;
 varying vec4 tangent;
 varying vec4 tint;
-varying vec4 shadowPos;
+varying vec4 shadowPosNear;
+varying vec4 shadowPosFar;
 void main() {
     vec3 pos = vertexPosition;
     float phase = pos.x*0.71 + pos.z*0.49;
@@ -27,6 +29,7 @@ void main() {
     tangent = vec4(normalize(mat3(matModel)*vertexTangent.xyz), vertexTangent.w);
     uv = vertexTexCoord;
     tint = vertexColor;
-    shadowPos = lightVP * world;
+    shadowPosNear = lightVPNear * world;
+    shadowPosFar = lightVPFar * world;
     gl_Position = mvp * vec4(pos, 1.0);
 }
