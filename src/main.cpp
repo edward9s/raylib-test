@@ -236,7 +236,7 @@ private:
     std::vector<Piece> pieces_;
 };
 struct Orbit {
-    float yaw=.24f,pitch=.12f,distance=13.f;
+    float yaw=.24f,pitch=.12f,distance=13.f,lookHeight=0.f;
     Vector2 previous[2]{};
     int previousCount=0;
     void update() {
@@ -252,6 +252,12 @@ struct Orbit {
                 float old=Vector2Distance(previous[0],previous[1]);
                 float now=Vector2Distance(a,b);
                 if(now>1&&old>1)distance=std::clamp(distance*old/now,4.f,24.f);
+                // Pan with two fingers to look toward the sun while keeping
+                // the orbit camera above ground. Pinching still controls zoom.
+                const float previousY=0.5f*(previous[0].y+previous[1].y);
+                const float currentY=0.5f*(a.y+b.y);
+                lookHeight=std::clamp(lookHeight+(currentY-previousY)*24.f/
+                    std::max(GetScreenHeight(),1),-2.f,22.f);
             }
             previous[0]=a;previous[1]=b;
         } else {
@@ -269,7 +275,7 @@ struct Orbit {
     Camera3D camera() const {
         float h=distance*std::cos(pitch);
         return {{h*std::sin(yaw),1.6f+distance*std::sin(pitch),-3+h*std::cos(yaw)},
-                {0,1.6f,-3},{0,1,0},52,CAMERA_PERSPECTIVE};
+                {0,1.6f+lookHeight,-3},{0,1,0},52,CAMERA_PERSPECTIVE};
     }
 };
 } // namespace
