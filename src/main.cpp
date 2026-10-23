@@ -18,7 +18,7 @@ constexpr int SHADOW_SIZE=2048;
 constexpr float PI=3.14159265358979323846f;
 constexpr int MATERIALS=5;
 
-#ifdef PLATFORM_ANDROID
+#if defined(__ANDROID__)
 constexpr const char *ROOT="forest/";
 #else
 constexpr const char *ROOT=".generated/assets/forest/";
