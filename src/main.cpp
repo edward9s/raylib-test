@@ -14,7 +14,7 @@
 #include <vector>
 
 namespace {
-constexpr int SHADOW_SIZE=1024;
+constexpr int SHADOW_SIZE=2048;
 constexpr float PI=3.14159265358979323846f;
 constexpr int MATERIALS=5;
 
