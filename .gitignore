@@ -1,0 +1,7 @@
+.deps/
+.generated/
+.gradle/
+**/build/
+.idea/
+*.apk
+local.properties

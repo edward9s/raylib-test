@@ -1,0 +1,54 @@
+plugins { id 'com.android.application' }
+def signing = ['KEYSTORE_PATH','STORE_PASSWORD','KEY_ALIAS','KEY_PASSWORD'].collectEntries { name -> [(name): System.getenv(name)] }
+android {
+    namespace 'com.edward9s.raylibforesttest'
+    compileSdk 35
+    ndkVersion '27.2.12479018'
+    defaultConfig {
+        applicationId 'com.edward9s.raylibforesttest'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0'
+        ndk { abiFilters 'arm64-v8a' }
+    }
+    sourceSets { main.assets.srcDirs += ['../../.generated/assets'] }
+    signingConfigs {
+        release {
+            if (signing.KEYSTORE_PATH) storeFile file(signing.KEYSTORE_PATH)
+            storePassword signing.STORE_PASSWORD
+            keyAlias signing.KEY_ALIAS
+            keyPassword signing.KEY_PASSWORD
+        }
+    }
+    buildTypes {
+        debug { debuggable true }
+        release {
+            debuggable false
+            jniDebuggable false
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+    externalNativeBuild { cmake { path '../../CMakeLists.txt'; version '3.22.1' } }
+}
+tasks.register('verifySceneAssets') {
+    doLast {
+        def names = ['canopy.png']
+        ['ground','stone','bark'].each { surface ->
+            ['albedo','normal','arm'].each { map -> names.add("${surface}_${map}.png") }
+        }
+        names.each { name ->
+            def source = file("../../.generated/assets/forest/${name}")
+            if (!source.isFile() || source.length() == 0) throw new GradleException("Missing scene texture: ${name}")
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'verifySceneAssets' }
+tasks.register('verifyReleaseSigning') {
+    doLast {
+        signing.each { name,value -> if (!value) throw new GradleException("Missing signing variable: ${name}") }
+        if (!file(signing.KEYSTORE_PATH).isFile()) throw new GradleException('Release signing keystore missing')
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach { dependsOn 'verifyReleaseSigning' }
