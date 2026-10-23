@@ -99,6 +99,11 @@ public:
             materials_[i].maps[MATERIAL_MAP_OCCLUSION].texture=shadow_.texture;
         }
 
+        shadowMaterial_=LoadMaterialDefault();
+        shadowMaterial_.shader=depth_;
+        shadowCanopyMaterial_=LoadMaterialDefault();
+        shadowCanopyMaterial_.shader=depth_;
+        shadowCanopyMaterial_.maps[MATERIAL_MAP_ALBEDO].texture=textures_[9];
         lightCamera_={{15.36f,40.96f,20.5f},{0,1.6f,-3},{0,1,0},76.f,CAMERA_ORTHOGRAPHIC};
         const Matrix view=MatrixLookAt(lightCamera_.position,lightCamera_.target,{0,1,0});
         const Matrix proj=MatrixOrtho(-38,38,-38,38,0.1,120.0);
@@ -151,6 +156,8 @@ public:
         for(auto &p:pieces_)UnloadMesh(p.mesh);
         // UnloadMaterial would unload textures and shaders that are owned centrally.
         for(auto &m:materials_)MemFree(m.maps);
+        MemFree(shadowMaterial_.maps);
+        MemFree(shadowCanopyMaterial_.maps);
         UnloadRenderTexture(shadow_);
         for(auto &t:textures_)UnloadTexture(t);
         UnloadTexture(panorama_);
@@ -169,13 +176,7 @@ public:
             scalar(depth_,"uTime",seconds);
             scalar(depth_,"uWind",wind);
             scalar(depth_,"uMasked",p.surface==forest::Surface::Canopy?1.f:0.f);
-            ::Material m=materials_[static_cast<int>(p.surface)];
-            std::array<MaterialMap, MAX_MATERIAL_MAPS> temporaryMaps;
-            std::copy_n(m.maps,MAX_MATERIAL_MAPS,temporaryMaps.begin());
-            // Avoid a read/write feedback loop without mutating scene materials.
-            temporaryMaps[MATERIAL_MAP_OCCLUSION].texture={};
-            m.maps=temporaryMaps.data();
-            m.shader=depth_;
+            const ::Material &m=p.surface==forest::Surface::Canopy?shadowCanopyMaterial_:shadowMaterial_;
             DrawMesh(p.mesh,m,MatrixIdentity());
         }
         rlEnableBackfaceCulling();
@@ -226,6 +227,7 @@ private:
     Texture2D panorama_{};
     RenderTexture2D shadow_{};
     std::array<::Material,MATERIALS> materials_{};
+    ::Material shadowMaterial_{},shadowCanopyMaterial_{};
     Camera3D lightCamera_{};
     std::vector<Piece> pieces_;
 };
