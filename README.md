@@ -12,11 +12,7 @@ frequencies, and scene scale are ported from Filament.
 The rendering path uses **raylib 6.2**, with custom GLES 2.0 shaders for
 photo-textured terrain / stones / bark, tangent-space normal mapping,
 alpha-tested pine needles, soft (3×3 PCF) directional shadows, leaf sway,
-a tonemapped HDR panorama, light haze and FPS text. Sunlight has a visible
-0.53° solar disk and atmospheric halo; shadow-map ray marching produces warm
-light shafts through sunlit gaps, with stronger highlights on ruins and ground.
-These light shafts use six samples per shaded pixel and may lower FPS on older
-phones.
+a tonemapped HDR panorama, light haze and FPS text.
 
 **Pixel-for-pixel equivalence is not possible:** Filament used a much more
 complex rendering pipeline (physically based BRDF and image-based lighting,
@@ -61,8 +57,6 @@ cd android && gradle :app:assembleRelease
 ```
 
 One finger or left mouse button rotates the orbit camera; pinch or wheel zooms.
-Two-finger vertical drag adjusts look height, so the sun above the tree canopy
-can be brought into view without sending the camera underground.
 The starting orbit camera values match Filament (yaw 0.24, pitch 0.12, radius 13).
 FPS is shown in the top-left corner.
 
