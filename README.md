@@ -45,6 +45,16 @@ Configure four Secrets in **this** repository. They are not inherited from
 - `KEY_PASSWORD`
 
 No signing keys are generated. Missing secrets fail the build early.
+Each Actions run increases Android `versionCode`, while keeping the package ID
+`com.edward9s.raylibforesttest` unchanged. NDK r27 native libraries
+are linked for 16 KiB Android pages; the workflow verifies APK ZIP alignment,
+ELF LOAD alignment, signing scheme and package metadata.
+
+If Android reports `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, the installed
+package has a different signing certificate: configure the original keystore,
+or uninstall the old test app **after backing up its data**. If it reports
+`INSTALL_FAILED_VERSION_DOWNGRADE`, install a newer build. If it reports
+`INSTALL_FAILED_NO_MATCHING_ABIS`, this APK only supports arm64-v8a.
 
 The runner clones the raylib `6.2` tag and compiles it from source, installs
 NDK `27.2.12479018`, downloads SHA-256-verified Poly Haven textures,
