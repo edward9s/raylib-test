@@ -187,25 +187,29 @@ public:
     void draw(Camera3D camera,float seconds) {
         rlSetClipPlanes(0.1,120.0);
         BeginDrawing();
-        // Static foliage casters eliminate temporal shimmer caused by
-        // grass blades smaller than a single shadow texel.
-        scalar(depth_,"uTime",seconds);
-        scalar(depth_,"uWind",0.0f);
-        for(int cascade=0;cascade<2;++cascade) {
-            BeginTextureMode(shadows_[cascade]);
-            ClearBackground(WHITE);
-            BeginMode3D(lightCameras_[cascade]);
-            rlDisableBackfaceCulling();
-            for(const auto &p:pieces_) {
-                if(p.surface==forest::Surface::Ground)continue;
-                scalar(depth_,"uMasked",p.surface==forest::Surface::Canopy?1.f:0.f);
-                const ::Material &m=p.surface==forest::Surface::Canopy
-                    ?shadowCanopyMaterial_:shadowMaterial_;
-                DrawMesh(p.mesh,m,MatrixIdentity());
+        if(!shadowsReady_) {
+            // Static foliage casters eliminate temporal shimmer caused by
+            // grass blades smaller than a single shadow texel.
+            scalar(depth_,"uTime",seconds);
+            scalar(depth_,"uWind",0.0f);
+            for(int cascade=0;cascade<2;++cascade) {
+                BeginTextureMode(shadows_[cascade]);
+                ClearBackground(WHITE);
+                BeginMode3D(lightCameras_[cascade]);
+                rlDisableBackfaceCulling();
+                for(const auto &p:pieces_) {
+                    if(p.surface==forest::Surface::Ground)continue;
+                    scalar(depth_,"uMasked",p.surface==forest::Surface::Canopy?1.f:0.f);
+                    const ::Material &m=p.surface==forest::Surface::Canopy
+                        ?shadowCanopyMaterial_:shadowMaterial_;
+                    DrawMesh(p.mesh,m,MatrixIdentity());
+                }
+                rlEnableBackfaceCulling();
+                EndMode3D();
+                EndTextureMode();
             }
-            rlEnableBackfaceCulling();
-            EndMode3D();
-            EndTextureMode();
+    
+            shadowsReady_=true;
         }
 
         ClearBackground({63,76,75,255});
@@ -254,6 +258,7 @@ private:
     std::array<::Material,MATERIALS> materials_{};
     ::Material shadowMaterial_{},shadowCanopyMaterial_{};
     std::array<Camera3D,2> lightCameras_{};
+    bool shadowsReady_=false;
     std::vector<Piece> pieces_;
 };
 struct Orbit {
