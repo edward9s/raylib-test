@@ -81,7 +81,22 @@ jobs:
           unzip -l "$apk" | grep -F 'assets/forest/ground_albedo.png'
           unzip -l "$apk" | grep -F 'assets/forest/environment.png'
           unzip -l "$apk" | grep -F 'assets/forest/shaders/forest.vs'
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$apk"
+          build_tools="$ANDROID_HOME/build-tools/35.0.0"
+          "$build_tools/zipalign" -c -P 16 -v 4 "$apk"
+          "$build_tools/apksigner" verify --verbose --print-certs "$apk"
+          "$build_tools/aapt" dump badging "$apk" | grep -E '^(package:|native-code:|sdkVersion:|targetSdkVersion:)'
+          # Confirm the packaged ELF itself (not just its ZIP entry) works
+          # on 16 KiB page-size Android devices.
+          unzip -p "$apk" lib/arm64-v8a/libmain.so > "$RUNNER_TEMP/raylib-main.so"
+          readelf -lW "$RUNNER_TEMP/raylib-main.so" | awk '
+            $1=="LOAD" {
+              print "ELF LOAD alignment:", $NF
+              if ($NF!="0x4000" && $NF!="0x10000" && $NF!="0x20000") invalid=1
+              count++
+            }
+            END { if (count==0 || invalid) exit 1 }
+          '
+          rm -f "$RUNNER_TEMP/raylib-main.so"
           cp "$apk" RaylibForest-test-arm64.apk
       - name: Replace rolling test release
         env:
