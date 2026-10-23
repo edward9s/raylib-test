@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -156,6 +157,7 @@ public:
         UnloadShader(sky_);UnloadShader(depth_);UnloadShader(leaf_);UnloadShader(lit_);
     }
     void draw(Camera3D camera,float seconds) {
+        rlSetClipPlanes(0.1,120.0);
         BeginDrawing();
         BeginTextureMode(shadow_);
         ClearBackground(WHITE);
@@ -168,9 +170,12 @@ public:
             scalar(depth_,"uWind",wind);
             scalar(depth_,"uMasked",p.surface==forest::Surface::Canopy?1.f:0.f);
             ::Material m=materials_[static_cast<int>(p.surface)];
+            std::array<MaterialMap, MAX_MATERIAL_MAPS> temporaryMaps;
+            std::copy_n(m.maps,MAX_MATERIAL_MAPS,temporaryMaps.begin());
+            // Avoid a read/write feedback loop without mutating scene materials.
+            temporaryMaps[MATERIAL_MAP_OCCLUSION].texture={};
+            m.maps=temporaryMaps.data();
             m.shader=depth_;
-            // Avoid sampling the shadow target while writing it.
-            m.maps[MATERIAL_MAP_OCCLUSION].texture={};
             DrawMesh(p.mesh,m,MatrixIdentity());
         }
         rlEnableBackfaceCulling();
