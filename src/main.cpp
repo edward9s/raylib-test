@@ -15,7 +15,7 @@
 
 namespace {
 constexpr int SHADOW_SIZE=2048;
-constexpr float PI=3.14159265358979323846f;
+constexpr float kPi=3.14159265358979323846f;
 constexpr int MATERIALS=5;
 
 #if defined(__ANDROID__)
@@ -212,7 +212,7 @@ private:
         const Vector3 right=Vector3Normalize(Vector3CrossProduct(f,camera.up));
         const Vector3 up=Vector3Normalize(Vector3CrossProduct(right,f));
         const float aspect=float(GetRenderWidth())/std::max(1,GetRenderHeight());
-        const float scale=std::tan(camera.fovy*PI/360.f);
+        const float scale=std::tan(camera.fovy*kPi/360.f);
         vector3(sky_,"eyeForward",f);
         vector3(sky_,"eyeRight",right);
         vector3(sky_,"eyeUp",up);
