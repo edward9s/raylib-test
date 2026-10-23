@@ -17,6 +17,8 @@ namespace {
 constexpr int SHADOW_SIZE=2048;
 constexpr float kPi=3.14159265358979323846f;
 constexpr int MATERIALS=5;
+// Shared by the sun disk, direct lighting and the shadow camera.
+constexpr Vector3 SUN_DIRECTION{0.32f,0.82f,0.47f};
 
 #if defined(__ANDROID__)
 constexpr const char *ROOT="forest/";
@@ -74,6 +76,7 @@ public:
         lit_.locs[SHADER_LOC_MAP_ROUGHNESS]=uniform(lit_,"armMap");
         depth_.locs[SHADER_LOC_MAP_ALBEDO]=uniform(depth_,"texture0");
         sky_.locs[SHADER_LOC_MAP_ALBEDO]=uniform(sky_,"texture0");
+        vector3(sky_,"sunDir",SUN_DIRECTION);
         for (int i=0;i<10;++i) {
             const char *names[]={
                 "ground_albedo.png","ground_normal.png","ground_arm.png",
@@ -105,13 +108,13 @@ public:
         shadowCanopyMaterial_=LoadMaterialDefault();
         shadowCanopyMaterial_.shader=depth_;
         shadowCanopyMaterial_.maps[MATERIAL_MAP_ALBEDO].texture=textures_[9];
-        lightCamera_={{15.36f,40.96f,20.5f},{0,1.6f,-3},{0,1,0},76.f,CAMERA_ORTHOGRAPHIC};
+        lightCamera_={{15.36f,40.96f,19.56f},{0,1.6f,-3},{0,1,0},76.f,CAMERA_ORTHOGRAPHIC};
         const Matrix view=MatrixLookAt(lightCamera_.position,lightCamera_.target,{0,1,0});
         const Matrix proj=MatrixOrtho(-38,38,-38,38,0.1,120.0);
         const Matrix lightVP=MatrixMultiply(view,proj);
         for(Shader s:{lit_,leaf_}) {
             SetShaderValueMatrix(s,uniform(s,"lightVP"),lightVP);
-            vector3(s,"sunDir",{0.32f,0.82f,0.47f});
+            vector3(s,"sunDir",SUN_DIRECTION);
             vector3(s,"fogColor",{0.36f,0.43f,0.44f});
             scalar(s,"shadowTexel",1.0f/SHADOW_SIZE);
         }
