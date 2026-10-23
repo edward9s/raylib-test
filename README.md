@@ -11,14 +11,15 @@ frequencies, and scene scale are ported from Filament.
 
 The rendering path uses **raylib 6.2**, with custom GLES 2.0 shaders for
 photo-textured terrain / stones / bark, tangent-space normal mapping,
-alpha-tested pine needles, stable two-cascade directional shadows (2048²
-near 26 m, 2048² far 90 m), sharper 2×2 PCF, leaf sway, a tonemapped HDR
-panorama, light haze and FPS text. Ground receives shadows; ruins,
-trees, ivy, ferns and individual grass blades cast them. Stationary fine-vegetation shadow silhouettes avoid
-subpixel flicker while the visible foliage can still sway gently. The
-static shadow maps are generated once on the first frame, not on every
-frame, avoiding repeated geometry rendering. They use about 64 MiB of
-color/depth render-target memory.
+alpha-tested pine needles and a dynamic 2048² directional shadow map.
+The original working single-map pipeline was restored after the experimental
+two-cascade renderer caused the tree-leaf shadows to disappear. The light
+frustum now covers 52 m instead of 76 m, shadows use sharper 2×2 PCF
+and a smaller depth bias to preserve near-ground grass details. Tree branches,
+pine needles, ferns, ivy and small grass blades keep their original animated
+vertex displacement **in both the color and shadow passes**. This produces
+animated, physically consistent cast shadows rather than frozen outlines.
+The scene also retains the panorama sky, haze and FPS text.
 
 **Pixel-for-pixel equivalence is not possible:** Filament used a much more
 complex rendering pipeline (physically based BRDF and image-based lighting,
