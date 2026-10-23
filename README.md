@@ -61,6 +61,8 @@ cd android && gradle :app:assembleRelease
 ```
 
 One finger or left mouse button rotates the orbit camera; pinch or wheel zooms.
+Two-finger vertical drag adjusts look height, so the sun above the tree canopy
+can be brought into view without sending the camera underground.
 The starting orbit camera values match Filament (yaw 0.24, pitch 0.12, radius 13).
 FPS is shown in the top-left corner.
 
