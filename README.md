@@ -13,8 +13,8 @@ The rendering path uses **raylib 6.2**, with custom GLES 2.0 shaders for
 photo-textured terrain / stones / bark, tangent-space normal mapping,
 alpha-tested pine needles, stable two-cascade directional shadows (2048²
 near 26 m, 2048² far 90 m), sharper 2×2 PCF, leaf sway, a tonemapped HDR
-panorama, light haze and FPS text. Ground, ruins, trees, ivy, ferns and grass
-receive/cast shadows. Stationary fine-vegetation shadow silhouettes avoid
+panorama, light haze and FPS text. Ground receives shadows; ruins,
+trees, ivy, ferns and individual grass blades cast them. Stationary fine-vegetation shadow silhouettes avoid
 subpixel flicker while the visible foliage can still sway gently. The
 static shadow maps are generated once on the first frame, not on every
 frame, avoiding repeated geometry rendering. They use about 64 MiB of
