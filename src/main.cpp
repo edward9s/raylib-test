@@ -37,7 +37,8 @@ Texture2D loadTexture(const char* name) {
 Shader loadShader(const char *vs,const char* fs) {
     const auto vert=path(vs),frag=path(fs);
     Shader shader=LoadShader(vert.c_str(),frag.c_str());
-    if(!IsShaderValid(shader))throw std::runtime_error("Shader failed: "+frag);
+    if(!IsShaderValid(shader) || shader.id==rlGetShaderIdDefault())
+        throw std::runtime_error("Shader failed to compile or link: "+frag);
     return shader;
 }
 int uniform(Shader shader,const char *name) {
