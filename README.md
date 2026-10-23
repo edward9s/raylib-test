@@ -16,7 +16,9 @@ near 26 m, 2048² far 90 m), sharper 2×2 PCF, leaf sway, a tonemapped HDR
 panorama, light haze and FPS text. Ground, ruins, trees, ivy, ferns and grass
 receive/cast shadows. Stationary fine-vegetation shadow silhouettes avoid
 subpixel flicker while the visible foliage can still sway gently. The
-extra shadow pass costs GPU time and about 64 MiB of color/depth memory.
+static shadow maps are generated once on the first frame, not on every
+frame, avoiding repeated geometry rendering. They use about 64 MiB of
+color/depth render-target memory.
 
 **Pixel-for-pixel equivalence is not possible:** Filament used a much more
 complex rendering pipeline (physically based BRDF and image-based lighting,
