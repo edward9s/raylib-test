@@ -64,6 +64,8 @@ jobs:
         run: |
           g++ -std=c++20 -O2 -Wall -Wextra -Werror -Isrc tests/geometry.cpp src/Geometry.cpp -o /tmp/raylib-forest-geometry
           /tmp/raylib-forest-geometry
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror tests/rocks.cpp -o /tmp/raylib-forest-rocks
+          /tmp/raylib-forest-rocks
       - name: Build release arm64 APK
         working-directory: android
         env:
